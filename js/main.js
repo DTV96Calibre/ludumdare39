@@ -41,11 +41,11 @@ function draw() {
   text("Controls: Arrow Keys + X", width/2, 20);
 
   for(var i=0; i<allSprites.length; i++) {
-  var s = allSprites[i];
-  if(s.position.x<-MARGIN) s.position.x = width+MARGIN;
-  if(s.position.x>width+MARGIN) s.position.x = -MARGIN;
-  if(s.position.y<-MARGIN) s.position.y = height+MARGIN;
-  if(s.position.y>height+MARGIN) s.position.y = -MARGIN;
+    var s = allSprites[i];
+    if(s.position.x<-MARGIN) s.position.x = width+MARGIN;
+    if(s.position.x>width+MARGIN) s.position.x = -MARGIN;
+    if(s.position.y<-MARGIN) s.position.y = height+MARGIN;
+    if(s.position.y>height+MARGIN) s.position.y = -MARGIN;
   }
 
   asteroids.overlap(bullets, asteroidHit);
@@ -56,22 +56,21 @@ function draw() {
     ship.rotation -= 4;
   if(keyDown(RIGHT_ARROW))
     ship.rotation += 4;
-  if(keyDown(UP_ARROW))
-    {
+  if(keyDown(UP_ARROW)){
     ship.addSpeed(.2, ship.rotation);
     //ship.changeAnimation("thrust");
     }
   else
     ship.changeAnimation("normal");
 
-  if(keyWentDown("x"))
-    {
-    var bullet = createSprite(ship.position.x, ship.position.y);
-    bullet.addImage(bulletImage);
-    bullet.setSpeed(10+ship.getSpeed(), ship.rotation);
-    bullet.life = 30;
-    bullets.add(bullet);
-    }
+  // if(keyWentDown("x"))
+  //   {
+  //   var bullet = createSprite(ship.position.x, ship.position.y);
+  //   bullet.addImage(bulletImage);
+  //   bullet.setSpeed(10+ship.getSpeed(), ship.rotation);
+  //   bullet.life = 30;
+  //   bullets.add(bullet);
+  //   }
 
   drawSprites();
 
