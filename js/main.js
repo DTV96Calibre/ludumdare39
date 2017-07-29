@@ -6,6 +6,9 @@ var asteroids;
 var ship;
 var shipImage, bulletImage, particleImage;
 var MARGIN = 40;
+var SHIP_SPRITE_ROTATION = 90;
+var KEY_E = 69;
+var KEY_W = 81;
 
 function setup() {
 createCanvas(800,600);
@@ -15,6 +18,7 @@ shipImage = loadImage("assets/ship.png");
 //particleImage = loadImage("assets/asteroids_particle.png");
 
 ship = createSprite(width/2, height/2);
+ship.rotation -= 90;
 ship.maxSpeed = 6;
 ship.friction = .98;
 ship.setCollider("circle", 0,0, 20);
@@ -57,9 +61,19 @@ function draw() {
   if(keyDown(RIGHT_ARROW))
     ship.rotation += 4;
   if(keyDown(UP_ARROW)){
-    ship.addSpeed(.2, ship.rotation);
+    ship.addSpeed(.2, ship.rotation - SHIP_SPRITE_ROTATION);
     //ship.changeAnimation("thrust");
     }
+  if(keyDown(DOWN_ARROW)){
+    ship.addSpeed(-.05, ship.rotation - SHIP_SPRITE_ROTATION);
+    //ship.changeAnimation("thrust");
+    }
+  if(keyDown(KEY_E)){
+    ship.addSpeed(.1, ship.rotation - SHIP_SPRITE_ROTATION + 90);
+  }
+  if(keyDown(KEY_W)){
+    ship.addSpeed(.1, ship.rotation - SHIP_SPRITE_ROTATION - 90);
+  }
   else
     ship.changeAnimation("normal");
 
