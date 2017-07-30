@@ -17,6 +17,9 @@ var GRAVITY_CONST = 0.01;
 var STAR_MASS = 1000;
 var ASTEROID_MAX_SPEED = 30;
 
+var MIN_ZOOM = 0.5; // 1 is no zooming either in or out
+var MAX_ZOOM = 0.25; // Smaller means zoomed further out
+
 function windowResized(){
   resizeCanvas(windowWidth, windowHeight);
 }
@@ -63,12 +66,14 @@ function setup() {
 
 function draw() {
   camera.position = ship.position;
-  camera.zoom = 0.25;
+  camera.zoom = map(ship.getSpeed(), 0, ship.maxSpeed, MIN_ZOOM, MAX_ZOOM);//0.25; // Scale zoom level with speed of ship
   background(0);
 
   fill(255);
+  camera.off();
   textAlign(CENTER);
   text("Controls: Arrow Keys + X", width/2, 20);
+  camera.on();
 
   // for(var i=0; i<allSprites.length; i++) {
   //   var s = allSprites[i];
