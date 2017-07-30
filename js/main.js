@@ -15,9 +15,14 @@ var KEY_E = 69;
 var KEY_W = 81;
 var GRAVITY_CONST = 0.01;
 var STAR_MASS = 1000;
+var ASTEROID_MAX_SPEED = 30;
+
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
+}
 
 function setup() {
-  createCanvas(800,600);
+  createCanvas(windowWidth, windowHeight);
 
 
   asteroids = new Group();
@@ -46,7 +51,7 @@ function setup() {
 
   ship = createSprite(width/2, height/2);
   ship.rotation -= 90;
-  ship.maxSpeed = 6;
+  ship.maxSpeed = 20;
   //ship.friction = .98;
   ship.setCollider("circle", 0,0, 20);
   ship.mass = 75;
@@ -159,6 +164,7 @@ function createAsteroid(type, x, y) {
   var img  = loadImage("assets/asteroid"+floor(random(0,3))+".png");
   a.addImage(img);
   a.setSpeed(2.5-(type/2), random(360));
+  a.maxSpeed = ASTEROID_MAX_SPEED;
   a.rotationSpeed = .5;
   //a.debug = true;
   a.type = type;
