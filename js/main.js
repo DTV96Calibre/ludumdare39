@@ -1,13 +1,15 @@
 //asteroid clone (core mechanics only)
 //arrow keys to move + x to shoot
 
+var DEBUG = true;
+
 var bullets;
 var asteroids;
 var ship;
 var shipImage, bulletImage, particleImage;
 
 var currentAsteroidDensity = 10;
-var currentStarDensity = 3;
+var currentStarDensity = 1;
 var nearestStar = null;
 
 var MARGIN = 40;
@@ -15,7 +17,7 @@ var SHIP_SPRITE_ROTATION = 90;
 var KEY_E = 69;
 var KEY_W = 81;
 var GRAVITY_CONST = 0.01;
-var STAR_MASS = 1000;
+var STAR_MASS = 75000;
 var ASTEROID_MAX_SPEED = 30;
 
 var MIN_ZOOM = 0.5; // 1 is no zooming either in or out
@@ -64,6 +66,7 @@ function setup() {
   ship.mass = 75;
 
   ship.addImage("normal", shipImage);
+  ship.debug = DEBUG;
   //ship.addAnimation("thrust", "assets/ship.png");
   nearestStar = stars[0];
 
@@ -76,59 +79,84 @@ function draw() {
 
   fill(255);
 
-  // for(var i=0; i<allSprites.length; i++) {
-  //   var s = allSprites[i];
-  //   if(s.position.x<-MARGIN) s.position.x = width+MARGIN;
-  //   if(s.position.x>width+MARGIN) s.position.x = -MARGIN;
-  //   if(s.position.y<-MARGIN) s.position.y = height+MARGIN;
-  //   if(s.position.y>height+MARGIN) s.position.y = -MARGIN;
-  // }
+  // limitSpritesToBox();
 
-  // Simulate gravity between each asteroid and each star
-  // Assume stars are too massive for asteroids to effect
-  // Assume ship and asteroids are not massive enough to attract each other
-  for(var i=0; i<asteroids.length; i++) {
-    var asteroid = asteroids[i];
-    for(var j=0; j<stars.length; j++) {
-      var star = stars[j];
-      var distance = calculateDistance(star.position.x, star.position.y, asteroid.position.x, asteroid.position.y);
-      asteroid.attractionPoint(star.mass * asteroid.mass / sq(distance), star.position.x, star.position.y);
-    }
-  }
-
+  simulateAsteroidGravity();
+  // simulateInterStellarGravity();
   calcGravOnShip();
-  asteroids.overlap(bullets, asteroidHit);
+  // asteroids.overlap(bullets, asteroidHit);
+  asteroids.overlap(stars, destroyAsteroid);
+  ship.overlap(stars, destroyShip);
   ship.bounce(asteroids);
   processInput();
   drawSprites();
 
   // Every 20 ticks, calculate nearest star
   if ((tick + 1) % 20 == 0){
-    var nearestDistance = calculateDistance(nearestStar.position.x, nearestStar.position.y,
-                                            ship.position.x, ship.position.y);
-    var currentDistance = 0;
-    for (var i = 0; i < stars.length; i++){
-      currentDistance = calculateDistance(stars[i].position.x, stars[i].position.y,
-                                          ship.position.x, ship.position.y);
-      if (currentDistance < nearestDistance){
-        nearestDistance = currentDistance;
-        nearestStar = stars[i];
-      }
-    }
+    determineNearestStar();
   }
+  drawLineToNearestStar();
+
+  // Draw UI elements
+  camera.off();
+  textAlign(CENTER);
+  text("Controls: Arrow Keys", width/2, 20);
+  text("CTRL+R to Reset", width/2, 40);
+  camera.on();
 
   tick += 1;
   if (tick > MAX_TICK){
     tick = 0;
   }
+}
 
-  drawLineToNearestStar();
+/* Simulate gravity between each asteroid and each star
+ * Assumes stars are too massive for asteroids to effect
+ * Assumes ship and asteroids are not massive enough to attract each other
+ */
+function simulateAsteroidGravity(){
+  for (var i=0; i<asteroids.length; i++) {
+    var asteroid = asteroids[i];
+    for (var j=0; j<stars.length; j++) {
+      var star = stars[j];
+      var distance = calculateDistance(star.position.x, star.position.y, asteroid.position.x, asteroid.position.y);
+      asteroid.attractionPoint(star.mass / sq(distance), star.position.x, star.position.y); // F=MA so remove asteroid mass in calc
+    }
+  }
+}
 
-  camera.off();
-  textAlign(CENTER);
-  text("Controls: Arrow Keys + X", width/2, 20);
-  text("CTRL+R to Reset", width/2, 40);
-  camera.on();
+function simulateInterStellarGravity(){
+  var s1;
+  var s2;
+  var magnitude;
+  var distance;
+  for (var i = 0; i < stars.length; i++){
+    for (var j = 0; j < stars.length; j++){
+      s1 = stars[i];
+      s2 = stars[j];
+      distance = calculateDistance(s1.position.x, s1.position.y, s2.position.x, s2.position.y);
+      magnitude = s1.mass * s2.mass / sq(distance);
+      s1.attractionPoint(s2.mass/sq(distance), s2.position.x, s2.position.y);
+      s2.attractionPoint(s1.mass/sq(distance), s1.position.x, s1.position.y);
+
+    }
+  }
+}
+
+/* Sets global nearestStar to the star closest to the ship.
+ */
+function determineNearestStar(){
+  var nearestDistance = calculateDistance(nearestStar.position.x, nearestStar.position.y,
+                                          ship.position.x, ship.position.y);
+  var currentDistance = 0;
+  for (var i = 0; i < stars.length; i++){
+    currentDistance = calculateDistance(stars[i].position.x, stars[i].position.y,
+                                        ship.position.x, ship.position.y);
+    if (currentDistance < nearestDistance){
+      nearestDistance = currentDistance;
+      nearestStar = stars[i];
+    }
+  }
 }
 
 function drawLineToNearestStar(){
@@ -181,7 +209,7 @@ function calcGravOnShip(){
   for(var i = 0; i < length; i++){
     star = stars[i];
     distance = calculateDistance(star.position.x, star.position.y, ship.position.x, ship.position.y);
-    ship.attractionPoint(star.mass * ship.mass / sq(distance), star.position.x, star.position.y);
+    ship.attractionPoint(star.mass / sq(distance), star.position.x, star.position.y);
   }
 }
 
@@ -192,7 +220,7 @@ function createAsteroid(type, x, y) {
   a.setSpeed(2.5-(type/2), random(360));
   a.maxSpeed = ASTEROID_MAX_SPEED;
   a.rotationSpeed = .5;
-  //a.debug = true;
+  a.debug = DEBUG;
   a.type = type;
 
   if(type == 2)
@@ -214,7 +242,8 @@ function createStar(x, y) {
   a.setSpeed(.5, random(360));
   a.rotationSpeed = 0.1;
   a.mass = STAR_MASS;
-  a.setCollider("circle", 0, 0, 500);
+  a.setCollider("circle", 0, 0, 50);
+  a.debug = DEBUG;
   stars.add(a);
   return a;
 }
@@ -237,4 +266,24 @@ function asteroidHit(asteroid, bullet) {
 
   bullet.remove();
   asteroid.remove();
+}
+
+function destroyAsteroid(asteroid){
+  asteroid.remove();
+}
+function destroyShip(ship){
+  ship.remove();
+}
+
+/* Causes sprites that move outside of box to appear on the other side of the box
+ * TODO: Remove this function entirely
+ */
+function limitSpritesToBox(){
+  for(var i=0; i<allSprites.length; i++) {
+    var s = allSprites[i];
+    if(s.position.x<-MARGIN) s.position.x = width+MARGIN;
+    if(s.position.x>width+MARGIN) s.position.x = -MARGIN;
+    if(s.position.y<-MARGIN) s.position.y = height+MARGIN;
+    if(s.position.y>height+MARGIN) s.position.y = -MARGIN;
+  }
 }
