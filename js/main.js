@@ -9,32 +9,46 @@ var MARGIN = 40;
 var SHIP_SPRITE_ROTATION = 90;
 var KEY_E = 69;
 var KEY_W = 81;
+var GRAVITY_CONST = 0.01;
+var STAR_MASS = 10;
 
 function setup() {
-createCanvas(800,600);
+  createCanvas(800,600);
 
-//bulletImage = loadImage("assets/asteroids_bullet.png");
-shipImage = loadImage("assets/ship.png");
-//particleImage = loadImage("assets/asteroids_particle.png");
 
-ship = createSprite(width/2, height/2);
-ship.rotation -= 90;
-ship.maxSpeed = 6;
-ship.friction = .98;
-ship.setCollider("circle", 0,0, 20);
-
-ship.addImage("normal", shipImage);
-//ship.addAnimation("thrust", "assets/ship.png");
-
-asteroids = new Group();
-bullets = new Group();
-
-for(var i = 0; i<8; i++) {
-  var ang = random(360);
-  var px = width/2 + 1000 * cos(radians(ang));
-  var py = height/2+ 1000 * sin(radians(ang));
-  createAsteroid(3, px, py);
+  asteroids = new Group();
+  bullets = new Group();
+  stars = new Group();
+  
+  // Create stars
+  for(var i = 0; i < 1; i++){
+    var ang = random(360);
+    var px = width/2 + 1000 * cos(radians(ang));
+    var py = height/2+ 1000 * sin(radians(ang));
+    createStar(px, py);
   }
+
+  // Create asteroids
+  for(var i = 0; i<5; i++) {
+    var ang = random(360);
+    var px = width/2 + 1000 * cos(radians(ang));
+    var py = height/2+ 1000 * sin(radians(ang));
+    createAsteroid(3, px, py);
+    }
+
+  //bulletImage = loadImage("assets/asteroids_bullet.png");
+  shipImage = loadImage("assets/ship.png");
+  //particleImage = loadImage("assets/asteroids_particle.png");
+
+  ship = createSprite(width/2, height/2);
+  ship.rotation -= 90;
+  ship.maxSpeed = 6;
+  ship.friction = .98;
+  ship.setCollider("circle", 0,0, 20);
+
+  ship.addImage("normal", shipImage);
+  //ship.addAnimation("thrust", "assets/ship.png");
+
 }
 
 function draw() {
@@ -51,6 +65,25 @@ function draw() {
     if(s.position.y<-MARGIN) s.position.y = height+MARGIN;
     if(s.position.y>height+MARGIN) s.position.y = -MARGIN;
   }
+
+  // Simulate gravity between each asteroid and each star
+  // Assume stars are too massive for asteroids to effect
+  // Assume ship and asteroids are not massive enough to attract each other
+  for(var i=0; i<asteroids.length; i++) {
+    var asteroid = asteroids[i];
+    for(var j=0; j<stars.length; j++) {
+      var star = stars[j];
+      var distance = sqrt(sq(star.position.x - asteroid.position.x) + sq(star.position.y - asteroid.position.y));
+      asteroid.attractionPoint(star.mass * asteroid.mass / sq(distance), star.position.x, star.position.y);
+    }
+  }
+
+
+  // for(var i=0; i<allSprites.length; i++) {
+  //   var s = allSprites[i];
+  //   ship.attractionPoint(.01, s.position.x, s.position.y);
+  // }
+
 
   asteroids.overlap(bullets, asteroidHit);
 
@@ -107,6 +140,18 @@ function createAsteroid(type, x, y) {
   a.mass = 2+a.scale;
   a.setCollider("circle", 0, 0, 50);
   asteroids.add(a);
+  return a;
+}
+
+function createStar(x, y) {
+  var a = createSprite(x, y);
+  var img = loadImage("assets/star.png");
+  a.addImage(img);
+  a.scale = 10;
+  a.setSpeed(.5, random(360));
+  a.rotationSpeed = 0.1;
+  a.mass = STAR_MASS;
+  stars.add(a);
   return a;
 }
 
