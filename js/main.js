@@ -6,7 +6,8 @@ var DEBUG = true;
 var bullets;
 var asteroids;
 var ship;
-var shipImage, bulletImage, particleImage;
+var energyBar;
+var shipImage, bulletImage, particleImage, energyBarImage;
 
 var currentAsteroidDensity = 10;
 var currentStarDensity = 1;
@@ -33,7 +34,6 @@ function windowResized(){
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-
   asteroids = new Group();
   bullets = new Group();
   stars = new Group();
@@ -57,16 +57,19 @@ function setup() {
   //bulletImage = loadImage("assets/asteroids_bullet.png");
   shipImage = loadImage("assets/ship.png");
   //particleImage = loadImage("assets/asteroids_particle.png");
-
   ship = createSprite(width/2, height/2);
   ship.rotation -= 90;
   ship.maxSpeed = 20;
   //ship.friction = .98;
   ship.setCollider("circle", 0,0, 20);
   ship.mass = 75;
-
   ship.addImage("normal", shipImage);
   ship.debug = DEBUG;
+
+  energyBarImage = loadImage("assets/left_hbar.png");
+  energyBar = createSprite(0, 0);
+  energyBar.addImage("normal", energyBarImage);
+  energyBar.visible = false; // prevent drawSprites from drawing relative to world coords
   //ship.addAnimation("thrust", "assets/ship.png");
   nearestStar = stars[0];
 
@@ -102,6 +105,11 @@ function draw() {
   textAlign(CENTER);
   text("Controls: Arrow Keys", width/2, 20);
   text("CTRL+R to Reset", width/2, 40);
+  energyBar.visible = true;
+  energyBar.position.x = 30;
+  energyBar.position.y = height/2;
+  energyBar.draw();
+  energyBar.visible = false;
   camera.on();
 
   tick += 1;
