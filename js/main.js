@@ -7,7 +7,8 @@ var ship;
 var shipImage, bulletImage, particleImage;
 
 var currentAsteroidDensity = 10;
-var currentStarDensity = 1;
+var currentStarDensity = 3;
+var nearestStar = null;
 
 var MARGIN = 40;
 var SHIP_SPRITE_ROTATION = 90;
@@ -19,6 +20,9 @@ var ASTEROID_MAX_SPEED = 30;
 
 var MIN_ZOOM = 0.5; // 1 is no zooming either in or out
 var MAX_ZOOM = 0.25; // Smaller means zoomed further out
+
+var tick = 0;
+var MAX_TICK = 60;
 
 function windowResized(){
   resizeCanvas(windowWidth, windowHeight);
@@ -61,6 +65,7 @@ function setup() {
 
   ship.addImage("normal", shipImage);
   //ship.addAnimation("thrust", "assets/ship.png");
+  nearestStar = stars[0];
 
 }
 
@@ -70,10 +75,6 @@ function draw() {
   background(0);
 
   fill(255);
-  camera.off();
-  textAlign(CENTER);
-  text("Controls: Arrow Keys + X", width/2, 20);
-  camera.on();
 
   // for(var i=0; i<allSprites.length; i++) {
   //   var s = allSprites[i];
@@ -96,24 +97,44 @@ function draw() {
   }
 
   calcGravOnShip();
-
-  // for(var i=0; i<allSprites.length; i++) {
-  //   var s = allSprites[i];
-  //   ship.attractionPoint(.01, s.position.x, s.position.y);
-  // }
-
-
   asteroids.overlap(bullets, asteroidHit);
-
-
   ship.bounce(asteroids);
-
   processInput();
-
-
-
   drawSprites();
 
+  // Every 20 ticks, calculate nearest star
+  if ((tick + 1) % 20 == 0){
+    var nearestDistance = calculateDistance(nearestStar.position.x, nearestStar.position.y,
+                                            ship.position.x, ship.position.y);
+    var currentDistance = 0;
+    for (var i = 0; i < stars.length; i++){
+      currentDistance = calculateDistance(stars[i].position.x, stars[i].position.y,
+                                          ship.position.x, ship.position.y);
+      if (currentDistance < nearestDistance){
+        nearestDistance = currentDistance;
+        nearestStar = stars[i];
+      }
+    }
+  }
+
+  tick += 1;
+  if (tick > MAX_TICK){
+    tick = 0;
+  }
+
+  drawLineToNearestStar();
+
+  camera.off();
+  textAlign(CENTER);
+  text("Controls: Arrow Keys + X", width/2, 20);
+  text("CTRL+R to Reset", width/2, 40);
+  camera.on();
+}
+
+function drawLineToNearestStar(){
+  stroke(127);
+  line(ship.position.x, ship.position.y, nearestStar.position.x, nearestStar.position.y);
+  stroke(0);
 }
 
 function processInput(){
