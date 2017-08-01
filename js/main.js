@@ -1,17 +1,18 @@
 //asteroid clone (core mechanics only)
 //arrow keys to move + x to shoot
 
-var DEBUG = true;
+var DEBUG = false;
 
 var bullets;
 var asteroids;
 var ship;
-var energyBar;
-var shipImage, bulletImage, particleImage, energyBarImage;
+var energyBar,energyBarFluid;
+var shipImage, bulletImage, particleImage, energyBarImage, energyBarFluidImage;
 
-var currentAsteroidDensity = 10;
-var currentStarDensity = 1;
+var currentAsteroidDensity = 25;
+var currentStarDensity = 3;
 var nearestStar = null;
+var fuel = 100; // Represents percentage of fuel remaining
 
 var MARGIN = 40;
 var SHIP_SPRITE_ROTATION = 90;
@@ -20,6 +21,9 @@ var KEY_W = 81;
 var GRAVITY_CONST = 0.01;
 var STAR_MASS = 75000;
 var ASTEROID_MAX_SPEED = 30;
+var ASTEROID_SPAWN_RADIUS = 2000;
+var FUEL_USAGE_RATE = 15;
+var FUEL_SCOOP_MULTIPLIER = 10; // Adjusts the rate at which fuel is scooped from stars
 
 var MIN_ZOOM = 0.5; // 1 is no zooming either in or out
 var MAX_ZOOM = 0.25; // Smaller means zoomed further out
@@ -41,18 +45,10 @@ function setup() {
   // Create stars
   for(var i = 0; i < currentStarDensity; i++){
     var ang = random(360);
-    var px = width/2 + 1000 * cos(radians(ang));
-    var py = height/2+ 1000 * sin(radians(ang));
+    var px = width/2 + 3000 * cos(radians(ang));
+    var py = height/2+ 3000 * sin(radians(ang));
     createStar(px, py);
   }
-
-  // Create asteroids
-  for(var i = 0; i < currentAsteroidDensity; i++) {
-    var ang = random(360);
-    var px = width/2 + 1000 * cos(radians(ang));
-    var py = height/2+ 1000 * sin(radians(ang));
-    createAsteroid(floor(random(0,3)), px, py);
-    }
 
   //bulletImage = loadImage("assets/asteroids_bullet.png");
   shipImage = loadImage("assets/ship.png");
@@ -66,10 +62,25 @@ function setup() {
   ship.addImage("normal", shipImage);
   ship.debug = DEBUG;
 
+  // Create asteroids
+  for(var i = 0; i < currentAsteroidDensity; i++) {
+    // var ang = random(360);
+    // var px = width/2 + 1000 * cos(radians(ang));
+    // var py = height/2+ 1000 * sin(radians(ang));
+    // createAsteroid(floor(random(0,3)), px, py);
+    spawnAsteroid(random(.1, 1));
+    }
+
+
+
   energyBarImage = loadImage("assets/left_hbar.png");
+  // energyBarFluidImage = loadImage("assets/grad1.png");
   energyBar = createSprite(0, 0);
   energyBar.addImage("normal", energyBarImage);
   energyBar.visible = false; // prevent drawSprites from drawing relative to world coords
+  // energyBarFluid = createSprite(0, 0);
+  // energyBarFluid.addImage("normal", energyBarFluidImage);
+  // energyBarFluid.visible = false;
   //ship.addAnimation("thrust", "assets/ship.png");
   nearestStar = stars[0];
 
@@ -90,8 +101,20 @@ function draw() {
   // asteroids.overlap(bullets, asteroidHit);
   asteroids.overlap(stars, destroyAsteroid);
   ship.overlap(stars, destroyShip);
-  ship.bounce(asteroids);
+  if (ship.bounce(asteroids)){
+    print("collision");
+  }
+  scoopFuel();
   processInput();
+  // Remove excess fuel
+  if (fuel > 100) {
+    fuel = 100;
+  }
+
+  if (asteroids.length < currentAsteroidDensity){
+    spawnAsteroid();
+  }
+
   drawSprites();
 
   // Every 20 ticks, calculate nearest star
@@ -103,19 +126,39 @@ function draw() {
   // Draw UI elements
   camera.off();
   textAlign(CENTER);
-  text("Controls: Arrow Keys", width/2, 20);
+  text("Controls: Arrow Keys, Strafe with Q and E", width/2, 20);
   text("CTRL+R to Reset", width/2, 40);
-  energyBar.visible = true;
-  energyBar.position.x = 30;
-  energyBar.position.y = height/2;
-  energyBar.draw();
-  energyBar.visible = false;
+  drawEnergyBar();
   camera.on();
 
   tick += 1;
   if (tick > MAX_TICK){
     tick = 0;
   }
+}
+
+function scoopFuel(){
+  var scoopedFuel = (1/calculateDistance(nearestStar.position.x, nearestStar.position.y, ship.position.x, ship.position.y)) * ship.getSpeed() * FUEL_SCOOP_MULTIPLIER;
+  if (scoopedFuel > 0){
+    fuel += scoopedFuel;
+  }
+}
+
+function drawEnergyBar(){
+  colorMode(HSB, 360, 100, 100);
+  fill(fuel, 100, 50);
+  rect(10, height/2 + 50, 15, -1*fuel);// Draw fluid
+  energyBar.visible = true;
+  energyBar.position.x = 20;
+  energyBar.position.y = height/2;
+  drawSprite(energyBar);
+  // energyBarFluid.visible = true;
+  // energyBarFluid.position.x = 20;
+  // energyBarFluid.position.y = height/2;
+  // drawSprite(energyBarFluid);
+
+  energyBar.visible = false;
+  // energyBarFluid.visible = false;
 }
 
 /* Simulate gravity between each asteroid and each star
@@ -174,23 +217,42 @@ function drawLineToNearestStar(){
 }
 
 function processInput(){
-  if(keyDown(LEFT_ARROW))
+  if (fuel > 0){
+    processShipInput();
+  }
+}
+
+function processShipInput(){
+  if (frameRate() === 0){ // Prevent 0 fps from destroying fuel
+    return;
+  }
+  var gotInput = false;
+
+  if(keyDown(LEFT_ARROW)){
     ship.rotation -= 4;
-  if(keyDown(RIGHT_ARROW))
+    gotInput = true;
+  }
+  if(keyDown(RIGHT_ARROW)){
     ship.rotation += 4;
+    gotInput = true;
+  }
   if(keyDown(UP_ARROW)){
     ship.addSpeed(.2, ship.rotation - SHIP_SPRITE_ROTATION);
+    gotInput = true;
     //ship.changeAnimation("thrust");
     }
   if(keyDown(DOWN_ARROW)){
     ship.addSpeed(-.05, ship.rotation - SHIP_SPRITE_ROTATION);
+    gotInput = true;
     //ship.changeAnimation("thrust");
     }
   if(keyDown(KEY_E)){
     ship.addSpeed(.1, ship.rotation - SHIP_SPRITE_ROTATION + 90);
+    gotInput = true;
   }
   if(keyDown(KEY_W)){
     ship.addSpeed(.1, ship.rotation - SHIP_SPRITE_ROTATION - 90);
+    gotInput = true;
   }
   // if(keyWentDown("x"))
   //   {
@@ -200,9 +262,10 @@ function processInput(){
   //   bullet.life = 30;
   //   bullets.add(bullet);
   //   }
-  else{
-    ship.changeAnimation("normal");
+  if (gotInput){
+    fuel -= FUEL_USAGE_RATE / frameRate();
   }
+  ship.changeAnimation("normal");
 }
 
 function calculateDistance(x1, y1, x2, y2){
@@ -219,6 +282,16 @@ function calcGravOnShip(){
     distance = calculateDistance(star.position.x, star.position.y, ship.position.x, ship.position.y);
     ship.attractionPoint(star.mass / sq(distance), star.position.x, star.position.y);
   }
+}
+
+function spawnAsteroid(radiusMultiplier){
+  if (!radiusMultiplier){
+    radiusMultiplier = 1;
+  }
+  var ang = random(360);
+  var px = ship.position.x + radiusMultiplier * (1/MAX_ZOOM) * ASTEROID_SPAWN_RADIUS * cos(radians(ang));
+  var py = ship.position.y + radiusMultiplier * (1/MAX_ZOOM) * ASTEROID_SPAWN_RADIUS * sin(radians(ang));
+  createAsteroid(floor(random(0,3)), px, py);
 }
 
 function createAsteroid(type, x, y) {
@@ -262,15 +335,15 @@ function asteroidHit(asteroid, bullet) {
   if(newType>0) {
     createAsteroid(newType, asteroid.position.x, asteroid.position.y);
     createAsteroid(newType, asteroid.position.x, asteroid.position.y);
-    }
+  }
 
-  for(var i=0; i<10; i++) {
+  for(var i = 0; i < 10; i++) {
     var p = createSprite(bullet.position.x, bullet.position.y);
     p.addImage(particleImage);
     p.setSpeed(random(3,5), random(360));
     p.friction = 0.95;
     p.life = 15;
-    }
+  }
 
   bullet.remove();
   asteroid.remove();
@@ -287,7 +360,7 @@ function destroyShip(ship){
  * TODO: Remove this function entirely
  */
 function limitSpritesToBox(){
-  for(var i=0; i<allSprites.length; i++) {
+  for(var i = 0; i < allSprites.length; i++) {
     var s = allSprites[i];
     if(s.position.x<-MARGIN) s.position.x = width+MARGIN;
     if(s.position.x>width+MARGIN) s.position.x = -MARGIN;
